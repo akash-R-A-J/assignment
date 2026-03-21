@@ -1,0 +1,14 @@
+[package]
+name = "cache-updater"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+rdkafka = { workspace = true }
+redis = { workspace = true }
+anyhow = { workspace = true }
+tokio-stream = "0.1"

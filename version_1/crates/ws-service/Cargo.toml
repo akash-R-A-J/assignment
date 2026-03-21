@@ -1,0 +1,14 @@
+[package]
+name = "ws-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+rdkafka = { workspace = true }
+axum = { workspace = true }
+anyhow = { workspace = true }
+futures-util = "0.3"

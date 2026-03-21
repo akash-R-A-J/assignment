@@ -1,0 +1,15 @@
+[package]
+name = "api-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+rdkafka = { workspace = true }
+redis = { workspace = true }
+axum = { workspace = true }
+anyhow = { workspace = true }
