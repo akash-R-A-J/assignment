@@ -18,13 +18,12 @@ use common::order::{CreateOrderRequest, Order};
 struct AppState {
     kafka_producer: FutureProducer,
     kafka_config: KafkaConfig,
-    redis_client: redis::Client,
+    redis_conn: redis::aio::MultiplexedConnection,
     id_counter: AtomicU64,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    
     let kafka_config = KafkaConfig::from_env();
     let redis_config = RedisConfig::from_env();
 
@@ -34,7 +33,9 @@ async fn main() -> Result<()> {
         .create()?;
 
     let redis_client = redis::Client::open(redis_config.url.as_str())?;
+    let redis_conn = redis_client.get_multiplexed_async_connection().await?;
 
+    // TODO: make this even stronger (try with server_id)
     // seed the counter with current time in micros so multiple api server instance get non-overlapping id range
     let seed = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -44,7 +45,7 @@ async fn main() -> Result<()> {
     let state = Arc::new(AppState {
         kafka_producer,
         kafka_config,
-        redis_client,
+        redis_conn,
         id_counter: AtomicU64::new(seed),
     });
 
@@ -55,11 +56,11 @@ async fn main() -> Result<()> {
 
     let port = std::env::var("API_PORT").unwrap_or_else(|_| "3000".into());
     let addr = format!("0.0.0.0:{port}");
-    
+
     eprintln!("api server listening on {addr}");
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    
+
     axum::serve(listener, app)
         .with_graceful_shutdown(async {
             tokio::signal::ctrl_c().await.ok();
@@ -75,14 +76,15 @@ async fn create_order(
     Json(req): Json<CreateOrderRequest>,
 ) -> impl IntoResponse {
     // edge case
-    if req.qty == 0 {
+    if req.qty <= 0 {
         return (StatusCode::BAD_REQUEST, "qty must be greater than 0").into_response();
     }
-    
+
     if req.price == 0 {
         return (StatusCode::BAD_REQUEST, "price must be greater than 0").into_response();
     }
-
+    
+    let qty: u64 = req.qty as u64;
     let id = state.id_counter.fetch_add(1, Ordering::Relaxed);
 
     let order = Order {
@@ -90,7 +92,7 @@ async fn create_order(
         market_id: req.market_id,
         side: req.side,
         price: req.price,
-        qty: req.qty,
+        qty,
         timestamp: chrono::Utc::now().timestamp_micros(),
     };
 
@@ -115,7 +117,7 @@ async fn create_order(
             Json(serde_json::json!({ "order_id": id })),
         )
             .into_response(),
-            
+
         Err((e, _)) => {
             eprintln!("kafka send failed: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, "failed to submit order").into_response()
@@ -123,27 +125,20 @@ async fn create_order(
     }
 }
 
-// GET /orderbook/:market_id — read cached orderbook from redis
+// GET /orderbook/:market_id - read cached orderbook from redis
 async fn get_orderbook(
     State(state): State<Arc<AppState>>,
     Path(market_id): Path<String>,
 ) -> impl IntoResponse {
-    
-    let conn = state.redis_client.get_multiplexed_async_connection().await;
-    
-    let mut conn = match conn {
-        Ok(c) => c,
-        Err(_) => {
-            return (StatusCode::SERVICE_UNAVAILABLE, "redis unavailable").into_response();
-        }
-    };
 
+    let mut conn = state.redis_conn.clone();
+    
     let bids_key = format!("orderbook:{market_id}:bids");
     let asks_key = format!("orderbook:{market_id}:asks");
 
     let bids: std::collections::HashMap<String, String> =
         conn.hgetall(&bids_key).await.unwrap_or_default();
-    
+
     let asks: std::collections::HashMap<String, String> =
         conn.hgetall(&asks_key).await.unwrap_or_default();
 
@@ -151,7 +146,7 @@ async fn get_orderbook(
         .iter()
         .filter_map(|(k, v)| Some((k.parse().ok()?, v.parse().ok()?)))
         .collect();
-    
+
     let mut asks_vec: Vec<(u64, u64)> = asks
         .iter()
         .filter_map(|(k, v)| Some((k.parse().ok()?, v.parse().ok()?)))

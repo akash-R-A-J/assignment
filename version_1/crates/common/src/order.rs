@@ -33,5 +33,5 @@ pub struct CreateOrderRequest {
     pub market_id: String,
     pub side: Side,
     pub price: u64,
-    pub qty: u64,
+    pub qty: i64,
 }

@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
+use rustc_hash::FxHashMap;
 
 use common::order::{Order, Side};
 
@@ -8,7 +9,7 @@ use common::order::{Order, Side};
 pub struct OrderBook {
     pub bids: BTreeMap<u64, VecDeque<Order>>,
     pub asks: BTreeMap<u64, VecDeque<Order>>,
-    orders_index: HashMap<u64, (Side, u64)>, // index for cancel lookup: order_id -> (side, price)
+    orders_index: FxHashMap<u64, (Side, u64)>, // index for cancel lookup: order_id -> (side, price)
 }
 
 impl OrderBook {
@@ -16,7 +17,7 @@ impl OrderBook {
         Self {
             bids: BTreeMap::new(),
             asks: BTreeMap::new(),
-            orders_index: HashMap::new(),
+            orders_index: FxHashMap::default(),
         }
     }
 

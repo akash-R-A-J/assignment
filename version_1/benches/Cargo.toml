@@ -8,6 +8,8 @@ publish = false
 common = { path = "../crates/common" }
 matching-engine = { path = "../crates/matching-engine" }
 criterion = { version = "0.5", features = ["html_reports"] }
+serde_json = "1"
+rustc-hash = "1"
 
 [[bench]]
 name = "matching_benchmark"

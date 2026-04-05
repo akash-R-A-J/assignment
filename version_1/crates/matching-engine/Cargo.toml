@@ -12,3 +12,4 @@ tokio = { workspace = true }
 rdkafka = { workspace = true }
 anyhow = { workspace = true }
 tokio-stream = "0.1"
+rustc-hash = { workspace = true }

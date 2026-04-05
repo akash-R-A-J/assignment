@@ -18,3 +18,4 @@ rdkafka = { version = "0.36", features = ["cmake-build"] }
 redis = { version = "0.27", features = ["tokio-comp", "aio"] }
 axum = { version = "0.7", features = ["ws"] }
 anyhow = "1"
+rustc-hash = "1"

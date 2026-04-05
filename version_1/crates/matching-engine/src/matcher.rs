@@ -38,6 +38,7 @@ pub fn match_order(book: &mut OrderBook, mut order: Order) -> MatchResult {
 
                 let remaining = book.qty_at_level(Side::Sell, best_ask);
                 
+                // delta (book_update)
                 book_updates.push(BookUpdate {
                     market_id: order.market_id.clone(),
                     side: Side::Sell,
